@@ -73,6 +73,13 @@ public class NamesrvController {
         this.configuration.setStorePathFromConfig(this.namesrvConfig, "configStorePath");
     }
 
+    /**
+     * Step2：根据启动属性创建NamesrvController实例，并初始化该实例，NameServerController实例为NameServer核心控制器。
+     *
+     * 加载KV配置，创建NettyServer网络处理对象，然后开启两个定时任务，在RocketMQ中此类定时任务统称为心跳检测。
+     *  定时任务1:NameServer每隔10s扫描一次Broker，移除处于不激活状态的Broker。
+     *  定时任务2:nameServer每隔10分钟打印一次KV配置。
+     */
     public boolean initialize() {
 
         this.kvConfigManager.load();

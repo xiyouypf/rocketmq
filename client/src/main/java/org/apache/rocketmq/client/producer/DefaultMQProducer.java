@@ -74,53 +74,28 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
             ResponseCode.NOT_IN_CURRENT_UNIT
     ));
 
-    /**
-     * Producer group conceptually aggregates all producer instances of exactly same role, which is particularly
-     * important when transactional messages are involved. </p>
-     *
-     * For non-transactional messages, it does not matter as long as it's unique per process. </p>
-     *
-     * See <a href="http://rocketmq.apache.org/docs/core-concept/">core concepts</a> for more discussion.
-     */
+    // 生产者所属组，消息服务器在回查事务状态时会随机选择该组中任何一个生产者发起事务回查请求。
     private String producerGroup;
 
-    /**
-     * Just for testing or demo program
-     */
+    // 默认topicKey。
     private String createTopicKey = TopicValidator.AUTO_CREATE_TOPIC_KEY_TOPIC;
 
-    /**
-     * Number of queues to create per default topic.
-     */
+    //默认主题在每一个Broker队列数量。
     private volatile int defaultTopicQueueNums = 4;
 
-    /**
-     * Timeout for sending messages.
-     */
+    // 发送消息默认超时时间，默认3s。
     private int sendMsgTimeout = 3000;
 
-    /**
-     * Compress message body threshold, namely, message body larger than 4k will be compressed on default.
-     */
+    // 消息体超过该值则启用压缩，默认4K。
     private int compressMsgBodyOverHowmuch = 1024 * 4;
 
-    /**
-     * Maximum number of retry to perform internally before claiming sending failure in synchronous mode. </p>
-     *
-     * This may potentially cause message duplication which is up to application developers to resolve.
-     */
+    // 同步方式发送消息重试次数，默认为2，总共执行3次。
     private int retryTimesWhenSendFailed = 2;
 
-    /**
-     * Maximum number of retry to perform internally before claiming sending failure in asynchronous mode. </p>
-     *
-     * This may potentially cause message duplication which is up to application developers to resolve.
-     */
+    // 异步方式发送消息重试次数，默认为2。
     private int retryTimesWhenSendAsyncFailed = 2;
 
-    /**
-     * Indicate whether to retry another broker on sending failure internally.
-     */
+    // 消息重试时选择另外一个Broker时，是否不等待存储结果就返回，默认为false。
     private boolean retryAnotherBrokerWhenNotStoreOK = false;
 
     /**

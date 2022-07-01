@@ -25,10 +25,12 @@ import java.util.Map;
 public class Message implements Serializable {
     private static final long serialVersionUID = 8445773977080406428L;
 
+    //Message的基础属性主要包括消息所属主题topic、消息Flag（RocketMQ不做处理）、扩展属性、消息体。
     private String topic;
     private int flag;
     private Map<String, String> properties;
     private byte[] body;
+
     private String transactionId;
 
     public Message() {

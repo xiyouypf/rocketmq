@@ -42,11 +42,12 @@ public class Producer {
         producer.setNamesrvAddr(DEFAULT_NAMESRVADDR);
         producer.start();
 
-        for (int i = 0; i < MESSAGE_COUNT; i++) {
+//        for (int i = 0; i < MESSAGE_COUNT; i++) {
+        int i = 0;
             try {
                 Message msg = new Message(TOPIC /* Topic */,
-                    TAG /* Tag */,
-                    ("Hello RocketMQ " + i).getBytes(RemotingHelper.DEFAULT_CHARSET) /* Message body */
+                        TAG /* Tag */,
+                        ("Hello RocketMQ " + i++).getBytes(RemotingHelper.DEFAULT_CHARSET) /* Message body */
                 );
 
                 SendResult sendResult = producer.send(msg);
@@ -56,7 +57,7 @@ public class Producer {
                 e.printStackTrace();
                 Thread.sleep(1000);
             }
-        }
+//        }
 
         /*
          * Shut down once the producer instance is not longer in use.

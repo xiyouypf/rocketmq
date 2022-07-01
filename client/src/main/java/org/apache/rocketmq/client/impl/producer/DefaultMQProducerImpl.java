@@ -190,9 +190,11 @@ public class DefaultMQProducerImpl implements MQProducerInner {
             case CREATE_JUST:
                 this.serviceState = ServiceState.START_FAILED;
 
+                // 检查productGroup是否符合要求
                 this.checkConfig();
 
                 if (!this.defaultMQProducer.getProducerGroup().equals(MixAll.CLIENT_INNER_PRODUCER_GROUP)) {
+                    // 改变生产者的名字为 UtilAll.getPid() + "#" + System.nanoTime();
                     this.defaultMQProducer.changeInstanceNameToPID();
                 }
 

@@ -68,6 +68,9 @@ public class NamesrvStartup {
         return null;
     }
 
+    /**
+     * Step1：首先来解析配置文件，需要填充NameServerConfig、NettyServerConfig属性值。
+     */
     public static NamesrvController createNamesrvController(String[] args) throws IOException, JoranException {
         System.setProperty(RemotingCommand.REMOTING_VERSION_KEY, Integer.toString(MQVersion.CURRENT_VERSION));
         //PackageConflictDetect.detectFastjson();
@@ -79,9 +82,12 @@ public class NamesrvStartup {
             return null;
         }
 
+        // NameServer业务参数
         final NamesrvConfig namesrvConfig = new NamesrvConfig();
+        // NameServer网络参数
         final NettyServerConfig nettyServerConfig = new NettyServerConfig();
         nettyServerConfig.setListenPort(9876);
+        // -c configFile通过-c命令指定配置文件的路径
         if (commandLine.hasOption('c')) {
             String file = commandLine.getOptionValue('c');
             if (file != null) {
