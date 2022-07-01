@@ -449,6 +449,9 @@ public class MQClientAPIImpl {
         return sendMessage(addr, brokerName, msg, requestHeader, timeoutMillis, communicationMode, null, null, null, 0, context, producer);
     }
 
+    /**
+     * 根据消息发送方式，同步、异步、单向方式进行网络传输
+     */
     public SendResult sendMessage(
         final String addr,
         final String brokerName,

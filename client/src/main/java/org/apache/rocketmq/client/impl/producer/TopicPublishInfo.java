@@ -66,7 +66,7 @@ public class TopicPublishInfo {
         this.haveTopicRouterInfo = haveTopicRouterInfo;
     }
 
-    public MessageQueue selectOneMessageQueue(final String lastBrokerName) {
+    public MessageQueue selectOneMessageQueue(/*上一次选择的执行发送消息失败的Broker*/final String lastBrokerName) {
         if (lastBrokerName == null) {
             return selectOneMessageQueue();
         } else {

@@ -53,6 +53,11 @@ public class Validators {
         }
     }
 
+    /**
+     * topic不为空，0<topic.length()<127,topic没有非法字符
+     * topic命名不为禁止topic命名
+     * body不为空，0<body.length()<defaultMQProducer.getMaxMessageSize()
+     */
     public static void checkMessage(Message msg, DefaultMQProducer defaultMQProducer) throws MQClientException {
         if (null == msg) {
             throw new MQClientException(ResponseCode.MESSAGE_ILLEGAL, "the message is null");
