@@ -94,6 +94,7 @@ public class NamesrvStartup {
                 InputStream in = new BufferedInputStream(new FileInputStream(file));
                 properties = new Properties();
                 properties.load(in);
+                //在解析启动时把指定的配置文件中的选项值，填充到nameServerConfig, nettyServerConfig对象
                 MixAll.properties2Object(properties, namesrvConfig);
                 MixAll.properties2Object(properties, nettyServerConfig);
 
@@ -111,6 +112,7 @@ public class NamesrvStartup {
             System.exit(0);
         }
 
+        //在解析启动时把启动命令中的选项值，填充到nameServerConfig
         MixAll.properties2Object(ServerUtil.commandLine2Properties(commandLine), namesrvConfig);
 
         if (null == namesrvConfig.getRocketmqHome()) {

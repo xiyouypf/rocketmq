@@ -70,60 +70,13 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      */
     protected final transient DefaultMQPushConsumerImpl defaultMQPushConsumerImpl;
 
-    /**
-     * Consumers of the same role is required to have exactly same subscriptions and consumerGroup to correctly achieve
-     * load balance. It's required and needs to be globally unique.
-     * </p>
-     *
-     * See <a href="http://rocketmq.apache.org/docs/core-concept/">here</a> for further discussion.
-     */
+    //消费者所属组
     private String consumerGroup;
 
-    /**
-     * Message model defines the way how messages are delivered to each consumer clients.
-     * </p>
-     *
-     * RocketMQ supports two message models: clustering and broadcasting. If clustering is set, consumer clients with
-     * the same {@link #consumerGroup} would only consume shards of the messages subscribed, which achieves load
-     * balances; Conversely, if the broadcasting is set, each consumer client will consume all subscribed messages
-     * separately.
-     * </p>
-     *
-     * This field defaults to clustering.
-     */
+    //消息消费模式，分为集群模式、广播模式，默认为集群模式。
     private MessageModel messageModel = MessageModel.CLUSTERING;
 
-    /**
-     * Consuming point on consumer booting.
-     * </p>
-     *
-     * There are three consuming points:
-     * <ul>
-     * <li>
-     * <code>CONSUME_FROM_LAST_OFFSET</code>: consumer clients pick up where it stopped previously.
-     * If it were a newly booting up consumer client, according aging of the consumer group, there are two
-     * cases:
-     * <ol>
-     * <li>
-     * if the consumer group is created so recently that the earliest message being subscribed has yet
-     * expired, which means the consumer group represents a lately launched business, consuming will
-     * start from the very beginning;
-     * </li>
-     * <li>
-     * if the earliest message being subscribed has expired, consuming will start from the latest
-     * messages, meaning messages born prior to the booting timestamp would be ignored.
-     * </li>
-     * </ol>
-     * </li>
-     * <li>
-     * <code>CONSUME_FROM_FIRST_OFFSET</code>: Consumer client will start from earliest messages available.
-     * </li>
-     * <li>
-     * <code>CONSUME_FROM_TIMESTAMP</code>: Consumer client will start from specified timestamp, which means
-     * messages born prior to {@link #consumeTimestamp} will be ignored
-     * </li>
-     * </ul>
-     */
+    //根据消息进度从消息服务器拉取不到消息时重新计算消费策略。
     private ConsumeFromWhere consumeFromWhere = ConsumeFromWhere.CONSUME_FROM_LAST_OFFSET;
 
     /**
@@ -134,34 +87,22 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      */
     private String consumeTimestamp = UtilAll.timeMillisToHumanString3(System.currentTimeMillis() - (1000 * 60 * 30));
 
-    /**
-     * Queue allocation algorithm specifying how message queues are allocated to each consumer clients.
-     */
+    //集群模式下消息队列负载策略。
     private AllocateMessageQueueStrategy allocateMessageQueueStrategy;
 
-    /**
-     * Subscription relationship
-     */
+    //订阅信息。
     private Map<String /* topic */, String /* sub expression */> subscription = new HashMap<String, String>();
 
-    /**
-     * Message listener
-     */
+    //消息业务监听器。
     private MessageListener messageListener;
 
-    /**
-     * Offset Storage
-     */
+    //消息消费进度存储器。
     private OffsetStore offsetStore;
 
-    /**
-     * Minimum consumer thread number
-     */
+    //消费者最新线程数。
     private int consumeThreadMin = 20;
 
-    /**
-     * Max consumer thread number
-     */
+    //消费者最大线程数，由于消费者线程池使用无界队列，故消费者线程个数其实最多只有consumeThreadMin个。
     private int consumeThreadMax = 20;
 
     /**
@@ -169,15 +110,10 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      */
     private long adjustThreadPoolNumsThreshold = 100000;
 
-    /**
-     * Concurrently max span offset.it has no effect on sequential consumption
-     */
+    //并发消息消费时处理队列最大跨度，默认2000，表示如果消息处理队列中偏移量最大的消息与偏移量最小的消息的跨度超过2000则延迟50毫秒后再拉取消息。
     private int consumeConcurrentlyMaxSpan = 2000;
 
-    /**
-     * Flow control threshold on queue level, each message queue will cache at most 1000 messages by default,
-     * Consider the {@code pullBatchSize}, the instantaneous value may exceed the limit
-     */
+    //默认值1000，每1000次流控后打印流控日志。
     private int pullThresholdForQueue = 1000;
 
     /**
@@ -214,21 +150,22 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     /**
      * Message pull Interval
      */
+    //推模式下拉取任务间隔时间，默认一次拉取任务完成继续拉取。
     private long pullInterval = 0;
 
     /**
      * Batch consumption size
      */
+    //消息并发消费时一次消费消息条数，通俗点说就是每次传入MessageListtener#consumeMessage中的消息条数。
     private int consumeMessageBatchMaxSize = 1;
 
     /**
      * Batch pull size
      */
+    //每次消息拉取所拉取的条数，默认32条。
     private int pullBatchSize = 32;
 
-    /**
-     * Whether update subscription relationship when every pull
-     */
+    //是否每次拉取消息都更新订阅信息，默认为false。
     private boolean postSubscriptionWhenPull = false;
 
     /**
@@ -236,23 +173,13 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      */
     private boolean unitMode = false;
 
-    /**
-     * Max re-consume times. 
-     * In concurrently mode, -1 means 16;
-     * In orderly mode, -1 means Integer.MAX_VALUE.
-     *
-     * If messages are re-consumed more than {@link #maxReconsumeTimes} before success.
-     */
+    //最大消费重试次数。如果消息消费次数超过maxReconsume-Times还未成功，则将该消息转移到一个失败队列，等待被删除。
     private int maxReconsumeTimes = -1;
 
-    /**
-     * Suspending pulling time for cases requiring slow pulling like flow-control scenario.
-     */
+    //延迟将该队列的消息提交到消费者线程的等待时间，默认延迟1s。
     private long suspendCurrentQueueTimeMillis = 1000;
 
-    /**
-     * Maximum amount of time in minutes a message may block the consuming thread.
-     */
+    //消息消费超时时间，默认为15，单位为分钟。
     private long consumeTimeout = 15;
 
     /**
@@ -733,9 +660,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     }
 
     /**
-     * Register a callback to execute on message arrival for concurrent consuming.
-     *
-     * @param messageListener message handling callback.
+     * 注册并发消息事件监听器。
      */
     @Override
     public void registerMessageListener(MessageListenerConcurrently messageListener) {

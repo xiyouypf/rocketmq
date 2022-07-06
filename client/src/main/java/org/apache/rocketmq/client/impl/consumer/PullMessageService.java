@@ -43,6 +43,7 @@ public class PullMessageService extends ServiceThread {
         this.mQClientFactory = mQClientFactory;
     }
 
+    //提供延迟添加将PullRequest放入到pullRequestQueue中
     public void executePullRequestLater(final PullRequest pullRequest, final long timeDelay) {
         if (!isStopped()) {
             this.scheduledExecutorService.schedule(new Runnable() {
@@ -56,6 +57,7 @@ public class PullMessageService extends ServiceThread {
         }
     }
 
+    //将PullRequest放入到pullRequestQueue中
     public void executePullRequestImmediately(final PullRequest pullRequest) {
         try {
             this.pullRequestQueue.put(pullRequest);
@@ -92,7 +94,10 @@ public class PullMessageService extends ServiceThread {
 
         while (!this.isStopped()) {
             try {
+                //从pullRequestQueue中获取一个PullRequest消息拉取任务，
+                // 如果pullRequest Queue为空，则线程将阻塞，直到有拉取任务被放入。
                 PullRequest pullRequest = this.pullRequestQueue.take();
+                //进行消息拉取
                 this.pullMessage(pullRequest);
             } catch (InterruptedException ignored) {
             } catch (Exception e) {
@@ -111,6 +116,7 @@ public class PullMessageService extends ServiceThread {
 
     @Override
     public String getServiceName() {
+        //消息拉取服务线程
         return PullMessageService.class.getSimpleName();
     }
 
