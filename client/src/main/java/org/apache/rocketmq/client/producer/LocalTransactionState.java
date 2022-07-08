@@ -17,7 +17,7 @@
 package org.apache.rocketmq.client.producer;
 
 public enum LocalTransactionState {
-    COMMIT_MESSAGE,
-    ROLLBACK_MESSAGE,
-    UNKNOW,
+    COMMIT_MESSAGE,//执行事务成功，确认提交
+    ROLLBACK_MESSAGE,//回滚消息，broker端会删除半消息
+    UNKNOW,//暂时为未知状态，等待broker回查
 }

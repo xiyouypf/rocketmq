@@ -99,7 +99,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     //消息消费进度存储器。
     private OffsetStore offsetStore;
 
-    //消费者最新线程数。
+    //消费者最小线程数。
     private int consumeThreadMin = 20;
 
     //消费者最大线程数，由于消费者线程池使用无界队列，故消费者线程个数其实最多只有consumeThreadMin个。

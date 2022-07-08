@@ -27,6 +27,7 @@ public interface TransactionListener {
      * @param arg Custom business parameter
      * @return Transaction state
      */
+    //半消息发送成功触发此方法来执行本地事务
     LocalTransactionState executeLocalTransaction(final Message msg, final Object arg);
 
     /**
@@ -36,5 +37,6 @@ public interface TransactionListener {
      * @param msg Check message
      * @return Transaction state
      */
+    //broker将发送检查消息来检查事务状态，并将调用此方法来获取本地事务状态
     LocalTransactionState checkLocalTransaction(final MessageExt msg);
 }

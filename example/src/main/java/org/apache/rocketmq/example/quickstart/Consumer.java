@@ -17,13 +17,13 @@
 package org.apache.rocketmq.example.quickstart;
 
 import org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;
-import org.apache.rocketmq.client.consumer.MQPushConsumer;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyContext;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyStatus;
 import org.apache.rocketmq.client.consumer.listener.MessageListenerConcurrently;
 import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.common.consumer.ConsumeFromWhere;
 import org.apache.rocketmq.common.message.MessageExt;
+import org.apache.rocketmq.common.protocol.heartbeat.MessageModel;
 
 import java.util.List;
 
@@ -32,28 +32,57 @@ import java.util.List;
  */
 public class Consumer {
 
-    public static final String CONSUMER_GROUP = "please_rename_unique_group_name_4";
+    public static final String CONSUMER_GROUP = "mq_consumer_group";
     public static final String DEFAULT_NAMESRVADDR = "127.0.0.1:9876";
-    public static final String TOPIC = "TopicTest";
+    public static final String TOPIC = "topic001";
+    public static final String TAG = "TagA";
+
+    private Consumer() {
+
+    }
+
+    public static volatile Consumer INSTANCE;
+
+    public static Consumer getInstance() {
+        if (INSTANCE == null) {
+            synchronized (Consumer.class) {
+                if (INSTANCE == null) {
+                    INSTANCE = new Consumer();
+                }
+            }
+        }
+        return INSTANCE;
+    }
 
     public static void main(String[] args) throws InterruptedException, MQClientException {
+        getInstance().pushConsumer();
+    }
 
+    public void pushConsumer() throws MQClientException {
         DefaultMQPushConsumer consumer = new DefaultMQPushConsumer(CONSUMER_GROUP);
 
         consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_FIRST_OFFSET);
-
-        consumer.subscribe(TOPIC, "*");
-
         consumer.setNamesrvAddr(DEFAULT_NAMESRVADDR);
+
+//        consumer.subscribe(TOPIC, MessageSelector.byTag(TAG));
+//        consumer.subscribe(TOPIC, MessageSelector.bySql("age >= 80 and age<=90"));
+        consumer.subscribe(TOPIC, "*");
+        consumer.setConsumeThreadMax(1); //最大开启的线程数
+        consumer.setConsumeThreadMin(1); //最小开启的线程数
         consumer.registerMessageListener(new MessageListenerConcurrently() {
             @Override
             public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> msgs, ConsumeConcurrentlyContext context) {
-//            System.out.printf("%s Receive New Messages: %s %n", Thread.currentThread().getName(), msg);
-                System.out.println(msgs);
+                try {
+                    System.out.println(msgs);
+                } catch (Exception e) {
+                    return ConsumeConcurrentlyStatus.RECONSUME_LATER;
+                }
                 return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
             }
         });
 
+        //集群：一组consumer，保证每个集群消费一次
+        consumer.setMessageModel(MessageModel.CLUSTERING);
         consumer.start();
 
         System.out.printf("Consumer Started.%n");
