@@ -568,6 +568,13 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
         }
     }
 
+    /**
+     * 注册Netty请求处理器
+     * @param requestCode：请求码
+     * @param processor：NettyRequestProcessor
+     * @param executor：线程池
+     *                提供资源隔离
+     */
     @Override
     public void registerProcessor(int requestCode, NettyRequestProcessor processor, ExecutorService executor) {
         ExecutorService executorThis = executor;

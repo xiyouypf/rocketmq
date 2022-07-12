@@ -92,15 +92,12 @@ public interface MessageStore {
     PutMessageResult putMessages(final MessageExtBatch messageExtBatch);
 
     /**
-     * Query at most <code>maxMsgNums</code> messages belonging to <code>topic</code> at <code>queueId</code> starting
-     * from given <code>offset</code>. Resulting messages will further be screened using provided message filter.
-     *
      * @param group Consumer group that launches this query.
      * @param topic Topic to query.
      * @param queueId Queue ID to query.
-     * @param offset Logical offset to start from.
-     * @param maxMsgNums Maximum count of messages to query.
-     * @param messageFilter Message filter used to screen desired messages.
+     * @param offset 待拉取偏移量。
+     * @param maxMsgNums 最大拉取消息条数
+     * @param messageFilter 消息过滤器。
      * @return Matched messages.
      */
     GetMessageResult getMessage(final String group, final String topic, final int queueId,
