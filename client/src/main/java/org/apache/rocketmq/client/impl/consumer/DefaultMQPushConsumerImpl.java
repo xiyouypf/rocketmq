@@ -591,8 +591,10 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                     this.defaultMQPushConsumer.getMessageModel(), this.defaultMQPushConsumer.isUnitMode());
                 this.serviceState = ServiceState.START_FAILED;
 
+                // 1. 检查配置信息
                 this.checkConfig();
 
+                // 2. 加工订阅信息（同时，如果是集群消费模式，还需要为该消费组创建一个重试主题
                 //构建主题订阅信息SubscriptionData并加入到RebalanceImpl的订阅消息中
                 this.copySubscription();
 
@@ -600,21 +602,26 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                     this.defaultMQPushConsumer.changeInstanceNameToPID();
                 }
 
-                //获取并初始化MQClientInstance
+                // 3. 创建MQClientInstance实例
+                // 这个实例在一个JVM中消费者与生产者公用
                 this.mQClientFactory = MQClientManager.getInstance().getOrCreateMQClientInstance(this.defaultMQPushConsumer, this.rpcHook);
 
-                //初始化rebalanceImpl
+                // 4. 初始化rebalanceImpl
+                // 负载均衡（队列默认分配算法）
                 this.rebalanceImpl.setConsumerGroup(this.defaultMQPushConsumer.getConsumerGroup());
                 this.rebalanceImpl.setMessageModel(this.defaultMQPushConsumer.getMessageModel());
+                // 设置队列分配算法
                 this.rebalanceImpl.setAllocateMessageQueueStrategy(this.defaultMQPushConsumer.getAllocateMessageQueueStrategy());
                 this.rebalanceImpl.setmQClientFactory(this.mQClientFactory);
 
+                // 5. 设置拉取消息的API包装类
                 this.pullAPIWrapper = new PullAPIWrapper(
                     mQClientFactory,
                     this.defaultMQPushConsumer.getConsumerGroup(), isUnitMode());
                 this.pullAPIWrapper.registerFilterMessageHook(filterMessageHookList);
 
                 //初始化消息进度
+                // 7. 消费进度的存储
                 if (this.defaultMQPushConsumer.getOffsetStore() != null) {
                     this.offsetStore = this.defaultMQPushConsumer.getOffsetStore();
                 } else {
@@ -632,9 +639,12 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                     }
                     this.defaultMQPushConsumer.setOffsetStore(this.offsetStore);
                 }
+                // 8. 加载消息进度
+                // push模式消费进度最后持久化在Broker端，但是Consumer端在内存中也持有消费进度
                 this.offsetStore.load();
 
                 //根据是否是顺序消费，创建消费端消费线程服务
+                // 9. 判断是顺序消息还是并发消息
                 if (this.getMessageListenerInner() instanceof MessageListenerOrderly) {
                     this.consumeOrderly = true;
                     //ConsumeMessageService主要负责消息消费，内部维护一个线程池。
@@ -642,13 +652,14 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                         new ConsumeMessageOrderlyService(this, (MessageListenerOrderly) this.getMessageListenerInner());
                 } else if (this.getMessageListenerInner() instanceof MessageListenerConcurrently) {
                     this.consumeOrderly = false;
-                    this.consumeMessageService =
-                        new ConsumeMessageConcurrentlyService(this, (MessageListenerConcurrently) this.getMessageListenerInner());
+                    this.consumeMessageService = new ConsumeMessageConcurrentlyService(this, (MessageListenerConcurrently) this.getMessageListenerInner());
                 }
 
+                // 10. 启动消息消费服务
                 this.consumeMessageService.start();
 
                 //向MQClientInstance注册消费者
+                // 11. 注册消费者
                 boolean registerOK = mQClientFactory.registerConsumer(this.defaultMQPushConsumer.getConsumerGroup(), this);
                 if (!registerOK) {
                     this.serviceState = ServiceState.CREATE_JUST;
@@ -658,7 +669,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                         null);
                 }
 
-                //启动MQClientInstance，在一个JVM中的所有消费者、生产者持有同一个MQClientInstance, MQClientInstance只会启动一次。
+                //12. 启动MQClientInstance，在一个JVM中的所有消费者、生产者持有同一个MQClientInstance, MQClientInstance只会启动一次。
                 mQClientFactory.start();
                 log.info("the consumer [{}] start OK.", this.defaultMQPushConsumer.getConsumerGroup());
                 this.serviceState = ServiceState.RUNNING;
@@ -674,9 +685,13 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 break;
         }
 
+        // 13. 更新TopicRouteData
         this.updateTopicSubscribeInfoWhenSubscriptionChanged();
+        // 14. 检测Broker状态
         this.mQClientFactory.checkClientInBroker();
+        // 15. 发送心跳
         this.mQClientFactory.sendHeartbeatToAllBrokerWithLock();
+        // 16. 重新负载
         this.mQClientFactory.rebalanceImmediately();
     }
 
