@@ -87,7 +87,7 @@
         <slf4j.version>1.7.7</slf4j.version>
         <logback.version>1.2.10</logback.version>
         <commons-cli.version>1.2</commons-cli.version>
-        <netty.version>4.1.65.Final</netty.version>
+        <netty.version>4.1.56.Final</netty.version>
         <bcpkix-jdk15on.version>1.69</bcpkix-jdk15on.version>
         <fastjson.version>1.2.69_noneautotype</fastjson.version>
         <javassist.version>3.20.0-GA</javassist.version>
@@ -545,7 +545,7 @@
             </dependency>
             <dependency>
                 <groupId>io.netty</groupId>
-                <artifactId>netty-all</artifactId>
+                <artifactId>ypf-netty-all</artifactId>
                 <version>${netty.version}</version>
             </dependency>
             <dependency>
@@ -715,12 +715,12 @@
         <repository>
             <id>releases</id>
             <name>releases</name>
-            <url>http://118.31.9.9:8081/nexus/content/repositories/releases/</url>
+            <url>http://8.130.72.252:8081/nexus/content/repositories/releases/</url>
         </repository>
         <snapshotRepository>
             <id>snapshots</id>
             <name>snapshots</name>
-            <url>http://118.31.9.9:8081/nexus/content/repositories/snapshots/</url>
+            <url>http://8.130.72.252:8081/nexus/content/repositories/snapshots/</url>
         </snapshotRepository>
     </distributionManagement>
 </project>

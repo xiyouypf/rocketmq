@@ -19,7 +19,7 @@
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>
-            <artifactId>netty-all</artifactId>
+            <artifactId>ypf-netty-all</artifactId>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
