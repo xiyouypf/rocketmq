@@ -89,6 +89,7 @@ public class RequestCode {
 
     public static final int DELETE_KV_CONFIG = 102;
 
+    // 向NameServer注册Broker，请求最终转发到 RouteInfoManager#registerBroker
     public static final int REGISTER_BROKER = 103;
 
     public static final int UNREGISTER_BROKER = 104;

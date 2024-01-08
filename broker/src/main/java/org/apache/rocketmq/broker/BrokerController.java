@@ -792,6 +792,7 @@ public class BrokerController {
         } catch (InterruptedException e) {
         }
 
+        // 向所有NameServer注销当前Broker
         this.unregisterBrokerAll();
 
         if (this.sendMessageExecutor != null) {
@@ -856,6 +857,7 @@ public class BrokerController {
         }
     }
 
+    // 向所有NameServer注销当前Broker
     private void unregisterBrokerAll() {
         this.brokerOuterAPI.unregisterBrokerAll(
             this.brokerConfig.getBrokerClusterName(),

@@ -23,7 +23,11 @@ import org.apache.rocketmq.common.DataVersion;
 import org.apache.rocketmq.common.TopicConfig;
 import org.apache.rocketmq.remoting.protocol.RemotingSerializable;
 
+/**
+ * 主题配置
+ */
 public class TopicConfigSerializeWrapper extends RemotingSerializable {
+    // 封装的是TopicConfigManager中的topicConfigTable，内部存储的是Broker启动时默认的一些Topic
     private ConcurrentMap<String, TopicConfig> topicConfigTable =
         new ConcurrentHashMap<String, TopicConfig>();
     private DataVersion dataVersion = new DataVersion();

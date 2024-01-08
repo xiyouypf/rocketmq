@@ -47,6 +47,7 @@ import org.apache.rocketmq.remoting.RPCHook;
 import org.apache.rocketmq.remoting.exception.RemotingException;
 
 /**
+ * 消息发送者
  * This class is the entry point for applications intending to send messages. </p>
  *
  * It's fine to tune fields which exposes getter/setter methods, but keep in mind, all of them should work well out of
@@ -99,7 +100,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
     private boolean retryAnotherBrokerWhenNotStoreOK = false;
 
     /**
-     * Maximum allowed message body size in bytes.
+     * 允许发送的最大消息长度，默认为4M，该值最大值为2^32-1
      */
     private int maxMessageSize = 1024 * 1024 * 4; // 4M
 
@@ -243,7 +244,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
     }
     
     /**
-     * Start this producer instance. </p>
+     * 启动当前这个生产者 </p>
      *
      * <strong> Much internal initializing procedures are carried out to make this instance prepared, thus, it's a must
      * to invoke this method before sending or querying messages. </strong> </p>
@@ -738,13 +739,11 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
     }
 
     /**
-     * Create a topic on broker. This method will be removed in a certain version after April 5, 2020, so please do not
-     * use this method.
-     *
-     * @param key accesskey
-     * @param newTopic topic name
-     * @param queueNum topic's queue number
-     * @param topicSysFlag topic system flag
+     * 创建主题
+     * @param key 目前未实际作用，可以与newTopic相同
+     * @param newTopic 主题名称
+     * @param queueNum 队列数量
+     * @param topicSysFlag 主题系统标签，默认为0
      * @throws MQClientException if there is any client error.
      */
     @Deprecated
@@ -756,6 +755,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
     /**
      * Search consume queue offset of the given time stamp.
      *
+     * 根据时间戳从队列中查找其偏移量
      * @param mq Instance of MessageQueue
      * @param timestamp from when in milliseconds.
      * @return Consume queue offset.
@@ -771,6 +771,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
      *
      * This method will be removed in a certain version after April 5, 2020, so please do not use this method.
      *
+     * 查找该消息队列中最大的物理偏移量。
      * @param mq Instance of MessageQueue
      * @return maximum offset of the given consume queue.
      * @throws MQClientException if there is any client error.

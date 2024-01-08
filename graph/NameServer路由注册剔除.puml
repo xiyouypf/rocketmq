@@ -1,0 +1,159 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+autonumber
+participant Broker端定时任务 as BrokerThread
+participant BrokerController as BrokerController
+participant SlaveSynchronize as SlaveSynchronize
+participant ConfigManager as ConfigManager
+participant BrokerOuterAPI as BrokerOuterAPI
+participant NettyRemotingClient as NettyRemotingClient
+participant File as File
+
+participant 生产者和消费者 as Productor
+participant DefaultRequestProcessor as NameServer
+participant NameServer端定时任务 as NameServerThread
+participant NamesrvController as NamesrvController
+participant RouteInfoManager as RouteInfoManager
+participant TopicRouteData as TopicRouteData
+
+
+BrokerThread->BrokerController: 向所有NameServer发送心跳包\n30秒一次,同步消息
+activate BrokerThread
+activate BrokerController
+BrokerController->BrokerOuterAPI: 向所有NameServer发送心跳包，REGISTER_BROKER=103
+activate BrokerOuterAPI
+BrokerOuterAPI->NettyRemotingClient: 获取nameServerAddress集合
+activate NettyRemotingClient
+NettyRemotingClient-->BrokerOuterAPI: 返回获取的nameServerAddress集合
+deactivate NettyRemotingClient
+loop 遍历所有NameServer列表
+    BrokerOuterAPI->NettyRemotingClient: 向NameServer注册Broker
+    activate NettyRemotingClient
+    alt 单向消息
+        NettyRemotingClient->NameServer:向NameServer注册Broker
+        NettyRemotingClient-->BrokerOuterAPI: 返回注册结果为null
+    else  同步消息（走这里）
+        NettyRemotingClient->NameServer:向NameServer注册Broker，REGISTER_BROKER=103
+        activate NameServer
+        NameServer->RouteInfoManager: 调用Broker注册接口registerBroker
+        activate RouteInfoManager
+        RouteInfoManager->RouteInfoManager: Step1：路由注册加写锁
+        RouteInfoManager->RouteInfoManager: 维护集群Broker集合(Map<clusterName, Set<brokerName>> clusterAddrTable),将broker名加入到集群Broker集合中
+        RouteInfoManager->RouteInfoManager: Step2： 维护BrokerData信息(Map<brokerName, BrokerData> brokerAddrTable)
+        RouteInfoManager->RouteInfoManager: 切换slave到master的情况：BrokerId不同，BrokerAddr相同，先删后加
+        alt Step3：如果Broker为Master && 并且Broker的Topic配置信息发生变化或者是初次注册
+            RouteInfoManager->RouteInfoManager: 创建或更新Topic路由元数据(Map<topic, Map<brokerName, QueueData>> topicQueueTable)
+        end
+        RouteInfoManager->RouteInfoManager: Step4：更新BrokerLiveInfo，存活Broker信息表
+        RouteInfoManager->RouteInfoManager: Step5：注册Broker的过滤器Server地址列表(Map<brokerAddr, List<FilterServerStr>> filterServerTable)
+        alt 如果此Broker为从节点
+            RouteInfoManager->RouteInfoManager: 则需要查找该Broker的Master的节点信息，并更新返回结果的masterAddr属性
+        end
+        RouteInfoManager->RouteInfoManager: 释放写锁
+        RouteInfoManager->NameServer: 返回注册结果
+        deactivate RouteInfoManager
+        NameServer-->NettyRemotingClient: 返回注册结果
+        deactivate NameServer
+        NettyRemotingClient-->BrokerOuterAPI: 返回注册结果
+        BrokerOuterAPI-->BrokerOuterAPI: 封装返回结果（master地址）
+    end
+    deactivate NettyRemotingClient
+end
+BrokerOuterAPI-->BrokerController: 返回心跳包注册结果(RegisterBrokerResult)
+deactivate BrokerOuterAPI
+BrokerController->SlaveSynchronize: 设置master地址
+BrokerController->ConfigManager:修改TopicConfigManager顺序Topic和非顺序Topic配置
+deactivate BrokerController
+activate ConfigManager
+ConfigManager->ConfigManager:更新topicConfigTable集合中Topic是否顺序消息，order属性
+ConfigManager->ConfigManager: 设置Topic配置版本+1
+ConfigManager->File: 持久化Topic配置到磁盘
+deactivate ConfigManager
+deactivate BrokerThread
+
+
+
+
+
+BrokerController->BrokerOuterAPI: Broker关闭时，向所有NameServer注销当前Broker，UNREGISTER_BROKER=104
+activate BrokerController
+activate BrokerOuterAPI
+BrokerOuterAPI->NettyRemotingClient: 获取nameServerAddress集合
+activate NettyRemotingClient
+NettyRemotingClient-->BrokerOuterAPI: 返回获取到的nameServerAddress集合
+deactivate NettyRemotingClient
+loop NameServer地址列表
+    BrokerOuterAPI->NettyRemotingClient: 向NameServer注销当前Broker,同步消息
+    activate NettyRemotingClient
+    NettyRemotingClient->NameServer:向NameServer注销当前Broker,UNREGISTER_BROKER
+    activate NameServer
+    NameServer->RouteInfoManager: 调用Broker注销接口unregisterBroker
+    activate RouteInfoManager
+    RouteInfoManager->RouteInfoManager: Step1：申请写锁
+    RouteInfoManager->RouteInfoManager: 根据brokerAddress删除Map<brokerAddr, BrokerLiveInfo> brokerLiveTable
+    RouteInfoManager->RouteInfoManager: 根据brokerAddress删除Map<brokerAddr, List<FilterServerStr>> filterServerTable
+    RouteInfoManager->RouteInfoManager: Step2：维护Map<brokerName, BrokerData> brokerAddrTable
+    RouteInfoManager->RouteInfoManager: Step3：维护Map<clusterName, Set<brokerName>> clusterAddrTable
+    RouteInfoManager->RouteInfoManager: Step4: 维护Map<topic, Map<brokerName, QueueData>> topicQueueTable
+    RouteInfoManager->RouteInfoManager: Step5：释放锁，完成路由删除
+    RouteInfoManager->NameServer: return返回
+    deactivate RouteInfoManager
+    NameServer->NettyRemotingClient: 返回调用是否成功
+    deactivate NameServer
+    deactivate NettyRemotingClient
+end
+deactivate BrokerOuterAPI
+deactivate BrokerController
+
+
+
+NameServerThread->RouteInfoManager:每隔10s扫描brokerLiveTable状态表
+activate NameServerThread
+activate RouteInfoManager
+loop brokerLiveTable
+    alt 超过120s没有收到心跳包
+        RouteInfoManager->RouteInfoManager: 关闭channel，关闭与Broker连接
+        RouteInfoManager->RouteInfoManager: 从Map<brokerAddr, BrokerLiveInfo> brokerLiveTable移除该Broker
+        RouteInfoManager->RouteInfoManager: Step1：申请写锁
+        RouteInfoManager->RouteInfoManager: 根据brokerAddress删除Map<brokerAddr, BrokerLiveInfo> brokerLiveTable
+        RouteInfoManager->RouteInfoManager: 根据filterServerTable删除Map<brokerAddr, List<FilterServerStr>> filterServerTable
+        RouteInfoManager->RouteInfoManager: Step2：维护Map<brokerName, BrokerData> brokerAddrTable
+        RouteInfoManager->RouteInfoManager: Step3：维护Map<clusterName, Set<brokerName>> clusterAddrTable
+        RouteInfoManager->RouteInfoManager: Step4: 维护Map<topic, Map<brokerName, QueueData>> topicQueueTable
+        RouteInfoManager->RouteInfoManager: Step5：释放锁，完成路由删除
+    end
+end
+RouteInfoManager-->NameServerThread: 完成路由删除
+deactivate RouteInfoManager
+deactivate NameServerThread
+
+
+Productor->NameServer: 根据主题名称拉取路由信息TopicRouteData\nGET_ROUTEINFO_BY_TOPIC = 105
+activate Productor
+activate NameServer
+NameServer->RouteInfoManager: Step1：调用RouterInfoManager的方法，\n填充TopicRouteData中的queueDatas、\nbrokerDatas和filterServerTable地址表
+activate RouteInfoManager
+RouteInfoManager->TopicRouteData: 构建TopicRouteData对象
+activate TopicRouteData
+TopicRouteData-->RouteInfoManager: 返回构建的TopicRouteData对象
+deactivate TopicRouteData
+RouteInfoManager->RouteInfoManager: 获取读锁
+RouteInfoManager->TopicRouteData: 根据Map<topic,Map<brokerName,QueueData>> topicQueueTable填充queueDatas属性
+loop Topic对应的所有brokerName
+    RouteInfoManager->TopicRouteData: 根据Map<brokerName,BrokerData> brokerAddrTable填充brokerDatas属性
+    activate TopicRouteData
+    RouteInfoManager->TopicRouteData: 根据Map<brokerAddr, List<FilterServerStr>> filterServerTable填充filterServerTable属性
+    deactivate TopicRouteData
+end
+RouteInfoManager->RouteInfoManager: 释放读锁
+RouteInfoManager-->NameServer: 返回TopicRouteData对象
+alt 支持顺序消息
+    NameServer->NameServer: 从NameServer的KVconfig中获取关于顺序消息相关的配置
+    NameServer->TopicRouteData: 填充路由信息,顺序消息相关的配置
+end
+NameServer-->Productor: 返回路由信息TopicRouteData
+deactivate RouteInfoManager
+deactivate NameServer
+deactivate Productor
+@enduml

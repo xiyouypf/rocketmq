@@ -85,6 +85,9 @@ import org.apache.rocketmq.remoting.exception.RemotingException;
 import org.apache.rocketmq.remoting.netty.NettyClientConfig;
 import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 
+/**
+ * MQClientInstance实例。整个JVM实例中只存在一个MQClientManager实例，
+ */
 public class MQClientInstance {
     private final static long LOCK_TIMEOUT_MILLIS = 3000;
     private final InternalLogger log = ClientLogger.getLog();
@@ -222,6 +225,10 @@ public class MQClientInstance {
         return mqList;
     }
 
+    /**
+     * 启动MQClientInstance，如果MQClientInstance已经启动，则本次启动不会真正执行
+     * @throws MQClientException
+     */
     public void start() throws MQClientException {
 
         synchronized (this) {
@@ -918,6 +925,12 @@ public class MQClientInstance {
         }
     }
 
+    /**
+     * Step3：向MQClientInstance注册，将当前生产者加入到MQClientInstance管理中，方便后续调用网络请求、进行心跳检测等。
+     * @param group
+     * @param producer
+     * @return
+     */
     public synchronized boolean registerProducer(final String group, final DefaultMQProducerImpl producer) {
         if (null == group || null == producer) {
             return false;

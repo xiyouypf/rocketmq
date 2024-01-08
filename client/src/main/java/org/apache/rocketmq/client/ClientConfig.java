@@ -72,6 +72,7 @@ public class ClientConfig {
      */
     protected boolean enableStreamRequestType = false;
 
+    // 构建clientId，客户端IP+instanceName+（unitname可选）
     public String buildMQClientId() {
         StringBuilder sb = new StringBuilder();
         sb.append(this.getClientIP());
@@ -107,7 +108,9 @@ public class ClientConfig {
         this.instanceName = instanceName;
     }
 
+    // 改变生产者的instanceName为进程ID
     public void changeInstanceNameToPID() {
+        // 如果instanceName为默认值DEFAULT
         if (this.instanceName.equals("DEFAULT")) {
             this.instanceName = UtilAll.getPid() + "#" + System.nanoTime();
         }

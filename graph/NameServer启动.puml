@@ -1,0 +1,110 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+autonumber
+
+participant NamesrvStartup as NamesrvStartup
+participant NamesrvController as NamesrvController
+participant KVConfigManager as KVConfigManager
+participant RouteInfoManager as RouteInfoManager
+participant NettyRemotingServer as NettyRemotingServer
+participant NamesrvConfig as NamesrvConfig
+participant NettyServerConfig as NettyServerConfig
+participant 线程池 as ThreadPoolExecutor
+participant 磁盘 as File
+
+
+activate NamesrvStartup
+NamesrvStartup->NamesrvStartup: 调用main方法启动NamingServer
+group 创建NamesrvController对象，Step1：首先来解析配置文件，需要填充NameServerConfig、NettyServerConfig属性值
+    NamesrvStartup->NamesrvConfig: 构建NameServer业务参数NamesrvConfig对象
+    activate NamesrvConfig
+    NamesrvConfig->NamesrvConfig: 设置 rocketmqHome 属性，rocketmq主目录
+    NamesrvConfig->NamesrvConfig: 设置 kvConfigPath 属性，NameServer存储KV配置属性的持久化路径
+    NamesrvConfig->NamesrvConfig: 设置 orderMessageEnable 属性，是否支持顺序消息，默认是不支持
+    NamesrvConfig-->NamesrvStartup: 返回构建的NamesrvConfig对象
+    deactivate NamesrvConfig
+    NamesrvStartup->NettyServerConfig: 构建NameServer网络参数NettyServerConfig对象
+    activate NettyServerConfig
+    NettyServerConfig->NettyServerConfig: 设置 listenPort 属性，NameServer监听端口，该值默认会被初始化为9876
+    NettyServerConfig->NettyServerConfig: 设置 serverWorkerThreads 属性，Netty业务线程池线程个数，默认为8
+    NettyServerConfig->NettyServerConfig: 设置 serverCallbackExecutorThreads 属性，public任务线程池线程个数，默认为0
+    NettyServerConfig->NettyServerConfig: 设置 serverSelectorThreads 属性，IO线程池线程个数，默认为3
+    NettyServerConfig-->NamesrvStartup: 返回构建的NettyServerConfig对象
+    deactivate NettyServerConfig
+    NamesrvStartup->NettyServerConfig: 设置NameServer监听端口为9876
+    NamesrvStartup->NamesrvStartup: rocketmqHome为空，直接返回
+    NamesrvStartup->NamesrvController: 构建NamesrvController对象（参数：namesrvConfig、nettyServerConfig）
+    activate NamesrvController
+    NamesrvController->NamesrvController: 入参设置到对应属性中
+    NamesrvController->KVConfigManager: 构建KVConfigManager对象（入参：当前NamesrvController对象）
+    activate KVConfigManager
+    KVConfigManager-->NamesrvController: 返回构建的KVConfigManager对象，并赋值给kvConfigManager属性
+    deactivate KVConfigManager
+    NamesrvController->RouteInfoManager: 构建RouteInfoManager对象
+    activate RouteInfoManager
+    RouteInfoManager-->NamesrvController: 返回构建的RouteInfoManager对象
+    deactivate RouteInfoManager
+    NamesrvController->NamesrvController: 构建Configuration对象（入参：namesrvConfig、nettyServerConfig），并赋值给configuration属性
+    NamesrvController-->NamesrvStartup: 返回构建的NamesrvController对象
+    deactivate NamesrvController
+end
+group 启动NameServer
+    NamesrvStartup->NamesrvController: 初始化NamesrvController
+    activate NamesrvController
+    NamesrvController->KVConfigManager: 加载KV配置
+    activate KVConfigManager
+    KVConfigManager->File: 从kvConfigPath持久化路径中读取KV配置属性
+    activate File
+    File-->KVConfigManager: 返回kvConfigPath路径中的KV配置属性
+    deactivate File
+    KVConfigManager->KVConfigManager: 将KV配置属性放入configTable对应的Map集合中
+    deactivate KVConfigManager
+    NamesrvController->NettyRemotingServer: 创建NettyServer网络处理对象（参数：NettyServerConfig、BrokerHousekeepingService）
+    activate NettyRemotingServer
+    NettyRemotingServer->NettyRemotingServer: 构建Netty服务端对象ServerBootstrap，并赋值给serverBootstrap属性
+    NettyRemotingServer->NettyRemotingServer: nettyServerConfig属性赋值
+    NettyRemotingServer->NettyRemotingServer: channelEventListener属性赋值为BrokerHousekeepingService
+    NettyRemotingServer->ThreadPoolExecutor: 构建固定大小线程池，线程池大小为nettyServerConfig的serverCallbackExecutorThreads，小于等于0则为4
+    activate ThreadPoolExecutor
+    ThreadPoolExecutor-->NettyRemotingServer: 返回public任务线程池,并赋值给publicExecutor字段
+    deactivate ThreadPoolExecutor
+    alt 使用Epoll
+        NettyRemotingServer->NettyRemotingServer: 给eventLoopGroupBoss赋值为EpollEventLoopGroup，线程数为1
+        NettyRemotingServer->NettyRemotingServer: 给eventLoopGroupSelector赋值为EpollEventLoopGroup，线程数为serverSelectorThreads，默认为3
+    else 不使用Epoll
+        NettyRemotingServer->NettyRemotingServer: 给eventLoopGroupBoss赋值为NioEventLoopGroup，线程数为1
+        NettyRemotingServer->NettyRemotingServer: 给eventLoopGroupSelector赋值为NioEventLoopGroup，线程数为serverSelectorThreads，默认为3
+    end
+    NettyRemotingServer->NettyRemotingServer: 加载SSL上下文（不懂）
+    NettyRemotingServer-->NamesrvController: 返回构建的NettyRemotingServer对象，并赋值给remotingServer字段
+    deactivate NettyRemotingServer
+    NamesrvController->ThreadPoolExecutor: 构建Netty业务线程池，线程个数为serverWorkerThreads，默认为8
+    activate ThreadPoolExecutor
+    ThreadPoolExecutor-->NamesrvController: 返回构建的Netty业务线程池，并赋值给remotingExecutor属性
+    deactivate ThreadPoolExecutor
+    NamesrvController->NettyRemotingServer: 注册默认处理器(参数：DefaultRequestProcessor、remotingExecutor)
+    activate NettyRemotingServer
+    NettyRemotingServer->NettyRemotingServer: 将处理器和执行器放入defaultRequestProcessor集合Pair<NettyRequestProcessor, ExecutorService>
+    deactivate NettyRemotingServer
+    NamesrvController->ThreadPoolExecutor: 定时任务1:NameServer每隔10s扫描一次Broker，移除处于不激活状态的Broker,延迟5秒执行
+    NamesrvController->ThreadPoolExecutor: 定时任务2:nameServer每隔10分钟打印一次KV配置。
+    alt TlsSystemConfig.tlsMode != TlsMode.DISABLED(不懂)
+        NamesrvController->NamesrvController: 构建FileWatchService对象，并赋值给fileWatchService属性
+    end
+    NamesrvController-->NamesrvStartup: 返回初始化结果是否成功
+    deactivate NamesrvController
+    NamesrvStartup->NamesrvStartup: 注册JVM钩子函数，执行controller.shutdown()方法释放资源
+    NamesrvStartup->NamesrvController: 启动NamesrvController
+    activate NamesrvController
+    NamesrvController->NettyRemotingServer: 启动NettyRemotingServer
+    activate NettyRemotingServer
+    NettyRemotingServer->NettyRemotingServer: 启动Netty服务（核心）
+    NettyRemotingServer->NettyRemotingServer: 启动NettyEventExecutor任务线程
+    NettyRemotingServer->NettyRemotingServer: 延迟3秒，1秒执行一次，scanResponseTable(不懂)
+    deactivate NettyRemotingServer
+    NamesrvController->NamesrvController: 启动fileWatchService线程任务
+    deactivate NamesrvController
+end
+deactivate NamesrvStartup
+@enduml

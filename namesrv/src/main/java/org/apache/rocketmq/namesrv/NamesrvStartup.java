@@ -151,6 +151,7 @@ public class NamesrvStartup {
             System.exit(-3);
         }
 
+        // 注册JVM钩子函数
         Runtime.getRuntime().addShutdownHook(new ShutdownHookThread(log, (Callable<Void>) () -> {
             controller.shutdown();
             return null;

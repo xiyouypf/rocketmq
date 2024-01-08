@@ -194,12 +194,14 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                 this.checkConfig();
 
                 if (!this.defaultMQProducer.getProducerGroup().equals(MixAll.CLIENT_INNER_PRODUCER_GROUP)) {
-                    // 改变生产者的名字为 UtilAll.getPid() + "#" + System.nanoTime();
+                    // 改变生产者的名字为 生产者的进程ID + "#" + System.nanoTime();
                     this.defaultMQProducer.changeInstanceNameToPID();
                 }
 
+                // 获取或创建MQClientInstance实例
                 this.mQClientFactory = MQClientManager.getInstance().getOrCreateMQClientInstance(this.defaultMQProducer, rpcHook);
 
+                // Step3：向MQClientInstance注册，将当前生产者加入到MQClientInstance管理中，方便后续调用网络请求、进行心跳检测等。
                 boolean registerOK = mQClientFactory.registerProducer(this.defaultMQProducer.getProducerGroup(), this);
                 if (!registerOK) {
                     this.serviceState = ServiceState.CREATE_JUST;
@@ -211,6 +213,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                 this.topicPublishInfoTable.put(this.defaultMQProducer.getCreateTopicKey(), new TopicPublishInfo());
 
                 if (startFactory) {
+                    // Step4：启动MQClientInstance，如果MQClientInstance已经启动，则本次启动不会真正执行
                     mQClientFactory.start();
                 }
 

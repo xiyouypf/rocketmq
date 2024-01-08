@@ -1,0 +1,69 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+autonumber
+participant 生产者 as Producer
+participant DefaultMQProducer as DefaultMQProducer
+participant DefaultMQProducerImpl as DefaultMQProducerImpl
+participant 线程池 as ThreadPoolExecutor
+participant MQClientManager as MQClientManager
+participant MQClientInstance as MQClientInstance
+
+
+Producer->DefaultMQProducer: 构建消息发送者
+activate Producer
+activate DefaultMQProducer
+DefaultMQProducer->DefaultMQProducer: 设置namespace、producerGroup属性
+DefaultMQProducer->DefaultMQProducerImpl: 构建消息发送者实现类(入参：DefaultMQProducer、RPCHook)
+activate DefaultMQProducerImpl
+DefaultMQProducerImpl->DefaultMQProducerImpl: 根据入参设置对应的属性
+DefaultMQProducerImpl->ThreadPoolExecutor: 构建默认异步发送者线程池
+activate ThreadPoolExecutor
+ThreadPoolExecutor-->DefaultMQProducerImpl: 返回构建的线程池，并赋值给defaultAsyncSenderExecutor属性
+deactivate ThreadPoolExecutor
+DefaultMQProducerImpl-->DefaultMQProducer: 返回构建的消息发送者实现类
+deactivate DefaultMQProducerImpl
+DefaultMQProducer-->Producer: 返回构建的消息发送者
+deactivate DefaultMQProducer
+deactivate Producer
+
+
+
+
+
+Producer->DefaultMQProducer: 启动消息发送者
+activate Producer
+activate DefaultMQProducer
+DefaultMQProducer->DefaultMQProducer: 重新设置生产者所属组
+DefaultMQProducer->DefaultMQProducerImpl: 启动消息发送者实现类
+activate DefaultMQProducerImpl
+DefaultMQProducerImpl->DefaultMQProducerImpl: 检查productGroup是否符合要求
+alt instanceName为DEFAULT
+    DefaultMQProducerImpl->DefaultMQProducer: 改变生产者的instanceName为进程ID+"#"+当前时间
+end
+DefaultMQProducerImpl->MQClientManager: 获取或创建MQClientInstance实例
+activate MQClientManager
+MQClientManager->DefaultMQProducer: 根据客户端IP和instanceName构建clientId
+activate DefaultMQProducer
+DefaultMQProducer-->MQClientManager: 返回构建的clientId
+deactivate DefaultMQProducer
+MQClientManager->MQClientManager: 根据clientId从factoryTable中获取MQClientInstance实例
+alt 获取的MQClientInstance实例
+    MQClientManager->MQClientInstance: 构建MQClientInstance实例
+    activate MQClientInstance
+    MQClientInstance-->MQClientManager: 返回构建的MQClientInstance实例
+    deactivate MQClientInstance
+    MQClientManager->MQClientManager: 将实例对象放入 Map<clientId,MQClientInstance> factoryTable中
+end
+MQClientManager-->DefaultMQProducerImpl: 返回MQClientInstance实例，赋值给mQClientFactory属性
+DefaultMQProducerImpl->MQClientInstance: 向MQClientInstance注册生产者实现类DefaultMQProducerImpl
+activate MQClientInstance
+MQClientInstance->MQClientInstance: 将group、producer放入Map<group,MQProducerInner> producerTable
+MQClientInstance-->DefaultMQProducerImpl: 返回注册结果
+deactivate MQClientInstance
+
+
+deactivate DefaultMQProducerImpl
+deactivate DefaultMQProducer
+deactivate Producer
+@enduml

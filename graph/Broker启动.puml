@@ -1,0 +1,196 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+autonumber
+participant BrokerStartup as BrokerStartup
+participant BrokerController as BrokerController
+participant 线程或线程池 as ThreadPoolExecutor
+participant ConfigManager as ConfigManager
+participant MessageStore as MessageStore
+participant NettyRemotingServer as NettyRemotingServer
+participant TransactionalMessageCheckService as TransactionalMessageCheckService
+participant BrokerOuterAPI as BrokerOuterAPI
+participant SlaveSynchronize as SlaveSynchronize
+
+participant BrokerConfig as BrokerConfig
+participant NettyServerConfig as NettyServerConfig
+participant NettyClientConfig as NettyClientConfig
+participant MessageStoreConfig as MessageStoreConfig
+participant 磁盘 as File
+
+activate BrokerStartup
+BrokerStartup->BrokerStartup: 调用main方法启动Broker
+group 创建BrokerController对象
+    BrokerStartup->BrokerConfig: 构建 BrokerConfig 对象
+    activate BrokerConfig
+    BrokerConfig->BrokerConfig: 设置对应的属性值
+    BrokerConfig-->BrokerStartup: 返回构建的 BrokerConfig 对象
+    deactivate BrokerConfig
+    BrokerStartup->NettyServerConfig: 构建 NettyServerConfig 对象,与生产者通信
+    activate NettyServerConfig
+    NettyServerConfig->NettyServerConfig: 设置对应的属性值
+    NettyServerConfig-->BrokerStartup: 返回构建的 NettyServerConfig 对象
+    deactivate NettyServerConfig
+    BrokerStartup->NettyClientConfig: 构建 NettyClientConfig 对象,与NameServer通信
+    activate NettyClientConfig
+    NettyClientConfig->NettyClientConfig: 设置对应的属性值
+    NettyClientConfig-->BrokerStartup: 返回构建的 NettyClientConfig 对象
+    deactivate NettyClientConfig
+    BrokerStartup->NettyClientConfig: 设置是否使用SSL标识useTLS
+    BrokerStartup->NettyServerConfig: 设置与NameServer通信的监听端口为10911
+    BrokerStartup->MessageStoreConfig: 构建 MessageStoreConfig 对象，消息存储配置
+    activate MessageStoreConfig
+    MessageStoreConfig->MessageStoreConfig: 设置对应的属性值
+    MessageStoreConfig->BrokerStartup: 返回构建的 MessageStoreConfig 对象
+    deactivate MessageStoreConfig
+    BrokerStartup->BrokerStartup: rocketmqHome为空,直接返回
+    BrokerStartup->BrokerStartup: 校验nameServer地址
+    alt broker角色为master
+        BrokerStartup->BrokerConfig: 设置brokerId为0
+    else broker角色为slave
+        BrokerStartup->BrokerConfig: 校验brokerId不能小于等于0
+    end
+    BrokerStartup->MessageStoreConfig: 设置haListenPort为NettyServerConfig监听端口+1
+    BrokerStartup->BrokerStartup: 设置系统属性brokerLogDir
+    BrokerStartup->BrokerController: 构建BrokerController对象\n（入参：brokerConfig,nettyServerConfig,\nnettyClientConfig,messageStoreConfig）
+    activate BrokerController
+    BrokerController->BrokerController: 对应的入参赋值
+    BrokerController->BrokerController: 构建对应的对象，并给对应的属性赋值
+    BrokerController-->BrokerStartup: 返回构建的BrokerController对象
+    deactivate BrokerController
+end
+group 初始化BrokerController对象
+    BrokerStartup->BrokerController: 初始化BrokerController对象
+    activate BrokerController
+    BrokerController->ConfigManager: 加载Broker中的主题信息,实现类：TopicConfigManager
+    activate ConfigManager
+    ConfigManager->File: 读取Broker中的主题信息
+    activate File
+    File-->ConfigManager: 返回读取的Broker主题信息
+    deactivate File
+    ConfigManager->ConfigManager: 存储Map<String, TopicConfig> \ntopicConfigTable信息
+    ConfigManager->ConfigManager: 存储DataVersion信息
+    ConfigManager-->BrokerController: 返回加载结果是否成功
+    deactivate ConfigManager
+    BrokerController->ConfigManager: 加载消费进度，实现类：ConsumerOffsetManager
+    activate ConfigManager
+    ConfigManager->File: 读取消费进度信息
+    activate File
+    File-->ConfigManager: 返回消费进度信息
+    deactivate File
+    ConfigManager->ConfigManager: 存储Map<topic@group,\nMap<Integer,Long>> offsetTable信息
+    ConfigManager-->BrokerController: 返回加载结果是否成功
+    deactivate ConfigManager
+    BrokerController->ConfigManager: 加载订阅信息，实现类：SubscriptionGroupManager
+    activate ConfigManager
+    ConfigManager->File: 读取订阅信息
+    activate File
+    File-->ConfigManager: 返回订阅信息
+    deactivate File
+    ConfigManager->ConfigManager: 存储Map<String, \nSubscriptionGroupConfig> \nsubscriptionGroupTable信息
+    ConfigManager->ConfigManager: 存储DataVersion信息
+    ConfigManager-->BrokerController: 返回加载结果是否成功
+    deactivate ConfigManager
+    BrokerController->ConfigManager: 加载消费者过滤信息(没看懂)，实现类：ConsumerFilterManager
+    activate ConfigManager
+    ConfigManager->File: 读取消费者过滤信息
+    activate File
+    File-->ConfigManager: 返回消费者过滤信息
+    deactivate File
+    ConfigManager-->BrokerController: 返回加载结果是否成功
+    deactivate ConfigManager
+    BrokerController->MessageStore: 创建消息存储管理组件DefaultMessageStore(入参：\nmessageStoreConfig、brokerStatsManager、NotifyMessageArrivingListener、brokerConfig)
+    activate MessageStore
+    MessageStore->MessageStore: 根据入参给对应的属性赋值
+    MessageStore->MessageStore: 创建对应对象，并给对应的属性赋值
+    MessageStore->ThreadPoolExecutor: 启动对应的线程服务
+    MessageStore-->BrokerController: 返回MessageStore对象，并赋值给messageStore属性
+    deactivate MessageStore
+    BrokerController->BrokerController: 构建broker的统计组件BrokerStats，并赋值给brokerStats属性
+    BrokerController->MessageStore: 存储组件启动,加载信息（包含零拷贝MMAP技术）
+    BrokerController->NettyRemotingServer: 构建Netty服务端对象,监听10911
+    activate NettyRemotingServer
+    NettyRemotingServer-->BrokerController: 返回构建的NettyRemotingServer对象，并赋值给remotingServer属性
+    deactivate NettyRemotingServer
+    BrokerController->NettyRemotingServer: 构建Netty服务端对象,监听10909
+    activate NettyRemotingServer
+    NettyRemotingServer-->BrokerController: 返回构建的NettyRemotingServer对象，并赋值给fastRemotingServer属性
+    deactivate NettyRemotingServer
+    BrokerController->ThreadPoolExecutor: 构建10个线程池
+    activate ThreadPoolExecutor
+    ThreadPoolExecutor-->BrokerController: 返回构建的10个线程池，并赋值给对应的属性
+    deactivate ThreadPoolExecutor
+    BrokerController->NettyRemotingServer: 注册一系列的任务请求,放入Map<requestCode,Pair<NettyRequestProcessor,ExecutorService>> processorTable集合中
+    group 执行异步线程任务
+        BrokerController->ThreadPoolExecutor: 异步执行检查broker状态任务,执行频率：一天一次
+        BrokerController->ThreadPoolExecutor: 异步执行消费进度持久化任务，延迟10秒，5秒执行一次
+        activate ThreadPoolExecutor
+        ThreadPoolExecutor->ConfigManager: 执行消费进度持久化，实现类ConsumerOffsetManager
+        deactivate ThreadPoolExecutor
+        activate ConfigManager
+        ConfigManager->File: 将offsetTable序列化写入磁盘
+        deactivate ConfigManager
+        BrokerController->ThreadPoolExecutor: 异步执行消费者过滤持久化任务，延迟10秒，10秒执行一次
+        activate ThreadPoolExecutor
+        ThreadPoolExecutor->ConfigManager: 执行消费者过滤持久化，实现类ConsumerFilterManager
+        deactivate ThreadPoolExecutor
+        activate ConfigManager
+        ConfigManager->File: 将filterDataByTopic序列化写入磁盘
+        deactivate ConfigManager
+        BrokerController->ThreadPoolExecutor: 异步执行protectBroker任务，延迟3分钟，3分钟执行一次
+        BrokerController->ThreadPoolExecutor: 异步执行printWaterMark任务，延迟10秒，1秒执行一次
+    end
+    BrokerController->BrokerController: 创建事物消息服务对应对象，并给对应的属性赋值
+    BrokerController->BrokerController: 注册JVM关闭的钩子函数
+    BrokerController-->BrokerStartup: 返回BrokerController初始化结果
+    deactivate BrokerController
+end
+group 启动BrokerController
+    BrokerStartup->BrokerController: 启动BrokerController
+    activate BrokerController
+    group 启动对应服务
+        BrokerController->MessageStore: 启动MessageStore
+        BrokerController->NettyRemotingServer: 启动 NettyRemotingServer
+        BrokerController->ThreadPoolExecutor: 启动 fileWatchService
+        BrokerController->ThreadPoolExecutor: 启动 brokerOuterAPI，启动对外通信组件，例如给NameServer发心跳
+        BrokerController->ThreadPoolExecutor: 启动 pullRequestHoldService
+        BrokerController->ThreadPoolExecutor: 启动 clientHousekeepingService
+        BrokerController->ThreadPoolExecutor: 启动 filterServerManager
+    end
+    alt !enableDLegerCommitLog
+        BrokerController->TransactionalMessageCheckService: 启动（仅master节点）
+        alt SLAVE
+            BrokerController->ThreadPoolExecutor: SLAVE异步执行同步（不懂），延迟3秒，10秒执行一次，
+        else master
+        end
+        group 注册Broker,向所有服务器（NameServer）发送心跳包
+            BrokerController->ConfigManager: 从TopicConfigManager获取topicConfigTable、dataVersion
+            activate ConfigManager
+            ConfigManager-->BrokerController: 返回topicConfigTable、dataVersion数据
+            deactivate ConfigManager
+            BrokerController->BrokerOuterAPI: 向所有服务器发送心跳包（RequestCode.REGISTER_BROKER = 103）
+            activate BrokerOuterAPI
+            BrokerOuterAPI-->BrokerController: 返回注册结果集合
+            deactivate BrokerOuterAPI
+            alt 返回注册结果集合不为空
+                BrokerController->SlaveSynchronize: 设置master地址
+            end
+        end
+    end
+    group 线程池异步注册Broker,向所有服务器（NameServer）发送心跳包,延迟10秒，30秒执行一次
+        BrokerController->ConfigManager: 从TopicConfigManager获取topicConfigTable、dataVersion
+        activate ConfigManager
+        ConfigManager-->BrokerController: 返回topicConfigTable、dataVersion数据
+        deactivate ConfigManager
+        BrokerController->BrokerOuterAPI: 向所有服务器发送心跳包（RequestCode.REGISTER_BROKER = 103）
+        activate BrokerOuterAPI
+        BrokerOuterAPI-->BrokerController: 返回注册结果集合
+        deactivate BrokerOuterAPI
+        alt 返回注册结果集合不为空
+            BrokerController->SlaveSynchronize: 设置master地址
+        end
+    end
+    BrokerController->BrokerController: 开启brokerFastFailure
+end
+deactivate BrokerStartup
+@enduml

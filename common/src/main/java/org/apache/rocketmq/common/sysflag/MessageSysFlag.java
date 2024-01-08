@@ -18,6 +18,9 @@ package org.apache.rocketmq.common.sysflag;
 
 import org.apache.rocketmq.common.compression.CompressionType;
 
+/**
+ * Message的flag
+ */
 public class MessageSysFlag {
 
     /**
