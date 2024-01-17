@@ -25,31 +25,48 @@ import org.apache.rocketmq.remoting.annotation.CFNotNull;
 import org.apache.rocketmq.remoting.annotation.CFNullable;
 import org.apache.rocketmq.remoting.exception.RemotingCommandException;
 
+/**
+ * 消息发送请求包。
+ * 主要包含如下重要信息：生产者组、主题名称、默认创建主题Key、该主题在单个Broker默认队列数、队列ID（队列序号）、
+ * 消息系统标记（MessageSysFlag）、消息发送时间、消息标记（RocketMQ对消息中的flag不做任何处理，供应用程序使用）、
+ * 消息扩展属性、消息重试次数、是否是批量消息等。
+ */
 public class SendMessageRequestHeader implements CommandCustomHeader {
+    // 生产者组
     @CFNotNull
     private String producerGroup;
+    // 主题名称
     @CFNotNull
     private String topic;
+    // 默认创建主题Key
     @CFNotNull
     private String defaultTopic;
+    // 该主题在单个Broker默认队列数
     @CFNotNull
     private Integer defaultTopicQueueNums;
+    // 队列ID（队列序号）
     @CFNotNull
     private Integer queueId;
+    // 消息系统标记（MessageSysFlag）
     @CFNotNull
     private Integer sysFlag;
+    // 消息发送时间
     @CFNotNull
     private Long bornTimestamp;
+    // 消息标记（RocketMQ对消息中的flag不做任何处理，供应用程序使用）、
     @CFNotNull
     private Integer flag;
+    // 消息扩展属性
     @CFNullable
     private String properties;
     @CFNullable
     private Integer reconsumeTimes;
     @CFNullable
     private boolean unitMode = false;
+    // 是否是批量消息等
     @CFNullable
     private boolean batch = false;
+    // 最大消息重试次数
     private Integer maxReconsumeTimes;
 
     @Override

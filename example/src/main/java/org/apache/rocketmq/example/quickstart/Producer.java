@@ -58,14 +58,14 @@ public class Producer {
     }
 
     public static void main(String[] args) throws MQClientException, InterruptedException, RemotingException, MQBrokerException {
-//        getInstance().sendOneSyncMessage();
+        getInstance().sendOneSyncMessage();
 //        getInstance().sendOneASyncMessage(producer);
 //        getInstance().sendOneWayMessage(producer);
 //        getInstance().sendBatchMessage(producer);
 //        getInstance().sendFilterMessage(producer);
 
 //        getInstance().sendTransactionMessage();
-        getInstance().sendToSelectQueue();
+//        getInstance().sendToSelectQueue();
     }
 
     private DefaultMQProducer createAndStartMQProducer() throws MQClientException, InterruptedException {

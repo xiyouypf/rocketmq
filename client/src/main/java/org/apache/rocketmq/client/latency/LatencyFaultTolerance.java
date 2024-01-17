@@ -21,15 +21,30 @@ package org.apache.rocketmq.client.latency;
  * 延迟机制接口规范
  */
 public interface LatencyFaultTolerance<T> {
-    //更新失败条目。
+    /**
+     * 更新失败条目。
+     * name:brokerName。
+     * currentLatency：消息发送故障延迟时间。
+     * notAvailableDuration：不可用持续时长，在这个时间内，Broker将被规避。
+     */
     void updateFaultItem(final T name, final long currentLatency, final long notAvailableDuration);
 
-    //判断Broker是否可用。
+    /**
+     * 判断Broker是否可用。
+     * name:broker名称。
+     */
     boolean isAvailable(final T name);
 
     //移除Fault条目，意味着Broker重新参与路由计算。
+
+    /**
+     * 移除Fault条目，意味着Broker重新参与路由计算。
+     * name:broker名称。
+     */
     void remove(final T name);
 
-    //尝试从规避的Broker中选择一个可用的Broker，如果没有找到，将返回null
+    /**
+     * 尝试从规避的Broker中选择一个可用的Broker，如果没有找到，将返回null。
+     */
     T pickOneAtLeast();
 }

@@ -120,6 +120,12 @@ public class ClientConfig {
         return NamespaceUtil.wrapNamespace(this.getNamespace(), resource);
     }
 
+    public static void main(String[] args) {
+        ClientConfig clientConfig = new ClientConfig();
+        String s = clientConfig.withNamespace("123");
+        System.out.println("s = " + s);
+    }
+
     public Set<String> withNamespace(Set<String> resourceSet) {
         Set<String> resourceWithNamespace = new HashSet<String>();
         for (String resource : resourceSet) {

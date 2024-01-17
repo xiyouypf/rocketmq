@@ -140,6 +140,10 @@ public class TopicValidator {
         return NOT_ALLOWED_SEND_TOPIC_SET.contains(topic);
     }
 
+    /**
+     * 检查该Topic是否可以进行消息发送。
+     * 主要针对默认主题，默认主题不能发送消息，仅仅供路由查找。
+     */
     public static boolean isNotAllowedSendTopic(String topic, RemotingCommand response) {
         if (isNotAllowedSendTopic(topic)) {
             response.setCode(ResponseCode.NO_PERMISSION);

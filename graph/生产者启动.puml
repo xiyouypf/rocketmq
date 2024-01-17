@@ -61,9 +61,26 @@ activate MQClientInstance
 MQClientInstance->MQClientInstance: 将group、producer放入Map<group,MQProducerInner> producerTable
 MQClientInstance-->DefaultMQProducerImpl: 返回注册结果
 deactivate MQClientInstance
-
-
+DefaultMQProducerImpl->DefaultMQProducerImpl: 放入topicPublishInfoTable（key:"TBW102",value:new TopicPublishInfo()）
+group 启动MQClientInstance（后续会补充）
+    DefaultMQProducerImpl->MQClientInstance: 启动MQClientInstance，如果MQClientInstance已经启动，则本次启动不会真正执行
+end
+DefaultMQProducerImpl->DefaultMQProducerImpl: 标记服务状态为“运行中”
+DefaultMQProducerImpl->MQClientInstance: 发送心跳包
+DefaultMQProducerImpl->ThreadPoolExecutor: 启动当前定时任务
 deactivate DefaultMQProducerImpl
+deactivate DefaultMQProducer
+deactivate Producer
+
+
+Producer->DefaultMQProducer: 发送同步消息，默认3秒超时
+activate Producer
+activate DefaultMQProducer
+
+DefaultMQProducer->DefaultMQProducer: 重新设置Topic名称
+DefaultMQProducer->DefaultMQProducerImpl: 发送同步消息
+
+DefaultMQProducer-->Producer: 返回消息发送结果
 deactivate DefaultMQProducer
 deactivate Producer
 @enduml
