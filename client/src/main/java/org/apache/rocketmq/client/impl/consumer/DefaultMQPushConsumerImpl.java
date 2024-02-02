@@ -865,6 +865,12 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         }
     }
 
+    /**
+     * Step1：构建主题订阅信息SubscriptionData并加入到RebalanceImpl的订阅消息中。订阅关系来源主要有两个。
+     * 1）通过调用DefaultMQPushConsumerImpl#subscribe（String topic, String sub Expression）方法。
+     * 2）订阅重试主题消息。从这里可以看出，RocketMQ消息重试是以消费组为单位，而不是主题，
+     *  消息重试主题名为%RETRY%+消费组名。消费者在启动的时候会自动订阅该主题，参与该主题的消息队列负载。
+     */
     private void copySubscription() throws MQClientException {
         try {
             Map<String, String> sub = this.defaultMQPushConsumer.getSubscription();

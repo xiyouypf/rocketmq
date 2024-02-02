@@ -47,19 +47,7 @@ import org.apache.rocketmq.remoting.RPCHook;
 import org.apache.rocketmq.remoting.exception.RemotingException;
 
 /**
- * In most scenarios, this is the mostly recommended class to consume messages.
- * </p>
- *
- * Technically speaking, this push client is virtually a wrapper of the underlying pull service. Specifically, on
- * arrival of messages pulled from brokers, it roughly invokes the registered callback handler to feed the messages.
- * </p>
- *
- * See quickstart/Consumer in the example module for a typical usage.
- * </p>
- *
- * <p>
- * <strong>Thread Safety:</strong> After initialization, the instance can be regarded as thread-safe.
- * </p>
+ * 推模式消息消费者
  */
 public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsumer {
 
@@ -116,13 +104,6 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     //默认值1000，每1000次流控后打印流控日志。
     private int pullThresholdForQueue = 1000;
 
-    /**
-     * Limit the cached message size on queue level, each message queue will cache at most 100 MiB messages by default,
-     * Consider the {@code pullBatchSize}, the instantaneous value may exceed the limit
-     *
-     * <p>
-     * The size(MB) of a message only measured by message body, so it's not accurate
-     */
     private int pullThresholdSizeForQueue = 100;
 
     /**

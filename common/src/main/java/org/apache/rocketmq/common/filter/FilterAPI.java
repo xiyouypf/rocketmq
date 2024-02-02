@@ -36,6 +36,11 @@ public class FilterAPI {
         return simple;
     }
 
+    /**
+     * 构建主题订阅信息SubscriptionData
+     * topic 主题
+     * subString 子表达式
+     */
     public static SubscriptionData buildSubscriptionData(String topic, String subString) throws Exception {
         SubscriptionData subscriptionData = new SubscriptionData();
         subscriptionData.setTopic(topic);

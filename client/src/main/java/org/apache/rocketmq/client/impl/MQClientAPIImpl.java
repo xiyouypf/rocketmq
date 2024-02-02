@@ -175,6 +175,7 @@ import org.apache.rocketmq.remoting.protocol.RemotingSerializable;
 public class MQClientAPIImpl {
 
     private final static InternalLogger log = ClientLogger.getLog();
+    // 是否启用智能消息发送
     private static boolean sendSmartMsg =
         Boolean.parseBoolean(System.getProperty("org.apache.rocketmq.client.sendSmartMsg", "true"));
 
