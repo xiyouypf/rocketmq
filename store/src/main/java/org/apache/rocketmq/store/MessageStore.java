@@ -27,7 +27,7 @@ import org.apache.rocketmq.store.config.BrokerRole;
 import org.apache.rocketmq.store.stats.BrokerStatsManager;
 
 /**
- * This class defines contracting interfaces to implement, allowing third-party vendor to use customized message store.
+ * 消息存储接口
  */
 public interface MessageStore {
 
@@ -55,39 +55,27 @@ public interface MessageStore {
      */
     void destroy();
 
-    /** Store a message into store in async manner, the processor can process the next request
-     *  rather than wait for result
-     *  when result is completed, notify the client in async manner
-     *
-     * @param msg MessageInstance to store
-     * @return a CompletableFuture for the result of store operation
+    /**
+     * 异步存储消息
      */
     default CompletableFuture<PutMessageResult> asyncPutMessage(final MessageExtBrokerInner msg) {
         return CompletableFuture.completedFuture(putMessage(msg));
     }
 
     /**
-     * Store a batch of messages in async manner
-     * @param messageExtBatch the message batch
-     * @return a CompletableFuture for the result of store operation
+     * 异步批量存储消息
      */
     default CompletableFuture<PutMessageResult> asyncPutMessages(final MessageExtBatch messageExtBatch) {
         return CompletableFuture.completedFuture(putMessages(messageExtBatch));
     }
 
     /**
-     * Store a message into store.
-     *
-     * @param msg Message instance to store
-     * @return result of store operation.
+     * 存储消息
      */
     PutMessageResult putMessage(final MessageExtBrokerInner msg);
 
     /**
-     * Store a batch of messages.
-     *
-     * @param messageExtBatch Message batch.
-     * @return result of storing batch messages.
+     * 批量存储消息
      */
     PutMessageResult putMessages(final MessageExtBatch messageExtBatch);
 

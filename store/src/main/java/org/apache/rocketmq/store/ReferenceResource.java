@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class ReferenceResource {
     protected final AtomicLong refCount = new AtomicLong(1);
+    // 当前MappedFile是否可用
     protected volatile boolean available = true;
     protected volatile boolean cleanupOver = false;
     private volatile long firstShutdownTimestamp = 0;
@@ -44,6 +45,7 @@ public abstract class ReferenceResource {
         if (this.available) {
             this.available = false;
             this.firstShutdownTimestamp = System.currentTimeMillis();
+            // 试释放资源，release只有在引用次数小于1的情况下才会释放资源
             this.release();
         } else if (this.getRefCount() > 0) {
             if ((System.currentTimeMillis() - this.firstShutdownTimestamp) >= intervalForcibly) {
@@ -53,6 +55,11 @@ public abstract class ReferenceResource {
         }
     }
 
+    /**
+     * 尝试释放资源，release只有在引用次数小于1的情况下才会释放资源；
+     * 如果引用次数大于0，对比当前时间与firstShutdownTimestamp，如果已经超过了其最大拒绝存活期，
+     * 每执行一次，将引用数减少1000，直到引用数小于0时通过执行realse方法释放资源。
+     */
     public void release() {
         long value = this.refCount.decrementAndGet();
         if (value > 0)
@@ -68,8 +75,15 @@ public abstract class ReferenceResource {
         return this.refCount.get();
     }
 
+    /**
+     * 清理资源
+     */
     public abstract boolean cleanup(final long currentRef);
 
+    /**
+     * 判断是否清理完成，判断标准是引用次数小于等于0并且cleanupOver为true,
+     * cleanupOver为true的触发条件是release成功将MappedByteBuffer资源释放
+     */
     public boolean isCleanupOver() {
         return this.refCount.get() <= 0 && this.cleanupOver;
     }

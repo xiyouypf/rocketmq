@@ -25,7 +25,7 @@ public class MessageStoreConfig {
 
     public static final String MULTI_PATH_SPLITTER = System.getProperty("rocketmq.broker.multiPathSplitter", ",");
 
-    //The root directory in which the log data is kept
+    //文件存储根目录，默认为${ROCKET_HOME}/store
     @ImportantField
     private String storePathRootDir = System.getProperty("user.home") + File.separator + "store";
 
@@ -40,7 +40,7 @@ public class MessageStoreConfig {
 
     // CommitLog file size,default is 1G
     private int mappedFileSizeCommitLog = 1024 * 1024 * 1024;
-    // ConsumeQueue file size,default is 30W
+    // 单个ConsumeQueue文件中默认包含30万个条目，单个文件的长度为30w×20字节
     private int mappedFileSizeConsumeQueue = 300000 * ConsumeQueue.CQ_STORE_UNIT_SIZE;
     // enable consume queue ext
     private boolean enableConsumeQueueExt = false;
@@ -89,9 +89,7 @@ public class MessageStoreConfig {
     private int putMsgIndexHightWater = 600000;
     // The maximum size of message body,default is 4M,4M only for body length,not include others.
     private int maxMessageSize = 1024 * 1024 * 4;
-    // Whether check the CRC32 of the records consumed.
-    // This ensures no on-the-wire or on-disk corruption to the messages occurred.
-    // This check adds some overhead,so it may be disabled in cases seeking extreme performance.
+    // 在进行文件恢复时查找消息时是否验证CRC
     private boolean checkCRCOnRecover = true;
     // How many pages are to be flushed when flush CommitLog
     private int flushCommitLogLeastPages = 4;
@@ -114,6 +112,7 @@ public class MessageStoreConfig {
     private int maxTransferCountOnMessageInDisk = 8;
     @ImportantField
     private int accessMessageInMemoryMaxRatio = 40;
+    // 是否启动Index索引文件
     @ImportantField
     private boolean messageIndexEnable = true;
     private int maxHashSlotNum = 5000000;
@@ -130,6 +129,7 @@ public class MessageStoreConfig {
     private int haSlaveFallbehindMax = 1024 * 1024 * 256;
     @ImportantField
     private BrokerRole brokerRole = BrokerRole.ASYNC_MASTER;
+    // 刷盘方式：默认为异步刷盘
     @ImportantField
     private FlushDiskType flushDiskType = FlushDiskType.ASYNC_FLUSH;
     private int syncFlushTimeout = 1000 * 5;
@@ -145,7 +145,11 @@ public class MessageStoreConfig {
     private boolean diskFallRecorded = true;
     private long osPageCacheBusyTimeOutMills = 1000;
     private int defaultQueryMaxNum = 32;
-
+    /**
+     * 如果transientStorePoolEnable为true,RocketMQ会单独申请一个与目标物理文件（commitlog）同样大小的堆外内存，
+     * 该堆外内存将使用内存锁定，确保不会被置换到虚拟内存中去，消息首先追加到堆外内存，然后提交到与物理文件的内存映射内存中，再flush到磁盘。
+     * 如果transientStorePoolEnable为flalse，消息直接追加到与物理文件直接映射的内存中，然后刷写到磁盘中
+     */
     @ImportantField
     private boolean transientStorePoolEnable = false;
     private int transientStorePoolSize = 5;

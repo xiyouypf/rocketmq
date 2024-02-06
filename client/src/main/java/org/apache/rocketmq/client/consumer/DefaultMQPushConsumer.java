@@ -154,7 +154,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      */
     private boolean unitMode = false;
 
-    //最大消费重试次数。如果消息消费次数超过maxReconsume-Times还未成功，则将该消息转移到一个失败队列，等待被删除。
+    //最大消费重试次数。如果消息消费次数超过maxReconsume-Times还未成功，则将该消息转移到一个失败队列，等待被删除。进入死信队列
     private int maxReconsumeTimes = -1;
 
     //延迟将该队列的消息提交到消费者线程的等待时间，默认延迟1s。

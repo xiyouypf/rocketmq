@@ -120,12 +120,19 @@ public abstract class ServiceThread implements Runnable {
         log.info("makestop thread " + this.getServiceName());
     }
 
+    /**
+     * 唤醒异步刷盘线程（如果该线程处于等待状态）
+     */
     public void wakeup() {
         if (hasNotified.compareAndSet(false, true)) {
             waitPoint.countDown(); // notify
         }
     }
 
+    /**
+     * GroupCommitService每处理一批同步刷盘请求（requestsRead容器中请求）后“休息”10ms
+     *  interval：休眠时间
+     */
     protected void waitForRunning(long interval) {
         if (hasNotified.compareAndSet(true, false)) {
             this.onWaitEnd();

@@ -54,6 +54,10 @@ public class IndexService {
             StorePathConfigHelper.getStorePathIndex(store.getMessageStoreConfig().getStorePathRootDir());
     }
 
+    /**
+     * 加载索引文件，
+     *  lastExitOK：上次是否正常退出
+     */
     public boolean load(final boolean lastExitOK) {
         File dir = new File(this.storePath);
         File[] files = dir.listFiles();
@@ -65,7 +69,9 @@ public class IndexService {
                     IndexFile f = new IndexFile(file.getPath(), this.hashSlotNum, this.indexNum, 0, 0);
                     f.load();
 
+                    // 如果上次异常退出
                     if (!lastExitOK) {
+                        // 索引文件上次刷盘时间小于该索引文件最大的消息时间戳，该文件将立即销毁
                         if (f.getEndTimestamp() > this.defaultMessageStore.getStoreCheckpoint()
                             .getIndexMsgTimestamp()) {
                             f.destroy(0);
@@ -198,13 +204,19 @@ public class IndexService {
         return topic + "#" + key;
     }
 
+    /**
+     * 根据消息更新Index索引文件
+     */
     public void buildIndex(DispatchRequest req) {
+        // Step1：获取或创建IndexFile文件
         IndexFile indexFile = retryGetAndCreateIndexFile();
         if (indexFile != null) {
+            // 获取indexFile文件最大的物理偏移量
             long endPhyOffset = indexFile.getEndPhyOffset();
             DispatchRequest msg = req;
             String topic = msg.getTopic();
             String keys = msg.getKeys();
+            // 如果该消息的物理偏移量小于索引文件中的物理偏移，则说明是重复数据，忽略本次索引构建
             if (msg.getCommitLogOffset() < endPhyOffset) {
                 return;
             }
@@ -219,7 +231,9 @@ public class IndexService {
                     return;
             }
 
+            // Step2：如果消息的唯一键不为空
             if (req.getUniqKey() != null) {
+                // 添加唯一键到Hash索引中，以便加速根据唯一键检索消息
                 indexFile = putKey(indexFile, msg, buildKey(topic, req.getUniqKey()));
                 if (indexFile == null) {
                     log.error("putKey error commitlog {} uniqkey {}", req.getCommitLogOffset(), req.getUniqKey());
@@ -227,6 +241,7 @@ public class IndexService {
                 }
             }
 
+            // Step3：构建索引键，RocketMQ支持为同一个消息建立多个索引，多个索引键空格分开
             if (keys != null && keys.length() > 0) {
                 String[] keyset = keys.split(MessageConst.KEY_SEPARATOR);
                 for (int i = 0; i < keyset.length; i++) {
@@ -261,9 +276,7 @@ public class IndexService {
     }
 
     /**
-     * Retries to get or create index file.
-     *
-     * @return {@link IndexFile} or null on failure.
+     * 获取或创建IndexFile文件
      */
     public IndexFile retryGetAndCreateIndexFile() {
         IndexFile indexFile = null;
