@@ -2066,6 +2066,7 @@ public class DefaultMessageStore implements MessageStore {
     }
 
     /**
+     * 转发消息给ConsumeQueue和IndexFile
      * Broker服务器在启动时会启动ReputMessageService线程，并初始化一个非常关键的参数reputFfomOffset，
      * 该参数的含义是ReputMessageService从哪个物理偏移量开始转发消息给ConsumeQueue和IndexFile。
      * 如果允许重复转发，reputFromOffset设置为CommitLog的提交指针；

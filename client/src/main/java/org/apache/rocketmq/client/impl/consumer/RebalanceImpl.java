@@ -215,6 +215,12 @@ public abstract class RebalanceImpl {
         }
     }
 
+    /**
+     * 每个DefaultMQPushConsumerImpl都持有一个单独的RebalanceImpl对象，该方法主要是遍历订阅信息对每个主题的队列进行重新负载。
+     * RebalanceImpl的Map<String,SubscriptionData> subTable在调用消费者DefaultMQPushConsumerImpl#subscribe方法时填充。
+     * 如果订阅信息发送变化，例如调用了unsubscribe方法，则需要将不关心的主题消费队列从processQueueTable中移除。
+     * isOrder：是否顺序消息
+     */
     public void doRebalance(final boolean isOrder) {
         Map<String, SubscriptionData> subTable = this.getSubscriptionInner();
         if (subTable != null) {
@@ -257,15 +263,15 @@ public abstract class RebalanceImpl {
                 break;
             }
             case CLUSTERING: {
+                // 第一步：根据主题获取全量队列信息，根据Group获取全量消费者列表
                 Set<MessageQueue> mqSet = this.topicSubscribeInfoTable.get(topic);
-                // 根据Group获取消费者列表
                 List<String> cidAll = this.mQClientFactory.findConsumerIdList(topic, consumerGroup);
+
                 if (null == mqSet) {
                     if (!topic.startsWith(MixAll.RETRY_GROUP_TOPIC_PREFIX)) {
                         log.warn("doRebalance, {}, but the topic[{}] not exist.", consumerGroup, topic);
                     }
                 }
-
                 if (null == cidAll) {
                     log.warn("doRebalance, {} {}, get consumer id list failed", consumerGroup, topic);
                 }
@@ -274,6 +280,7 @@ public abstract class RebalanceImpl {
                     List<MessageQueue> mqAll = new ArrayList<MessageQueue>();
                     mqAll.addAll(mqSet);
 
+                    // 第二步：对cidAll, mqAll排序，保证同一个消费组内看到的视图保持一致，确保同一个消费队列不会被多个消费者分配。
                     Collections.sort(mqAll);
                     Collections.sort(cidAll);
 

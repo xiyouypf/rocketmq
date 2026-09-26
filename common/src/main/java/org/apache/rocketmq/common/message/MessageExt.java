@@ -40,6 +40,7 @@ public class MessageExt extends Message {
     // 开始存储时间戳
     private long storeTimestamp;
     private SocketAddress storeHost;
+    // 消息ID
     private String msgId;
     private long commitLogOffset;
     private int bodyCRC;

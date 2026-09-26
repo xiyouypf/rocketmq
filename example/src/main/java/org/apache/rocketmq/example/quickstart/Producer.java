@@ -83,6 +83,8 @@ public class Producer {
         try {
             //阻塞
             sendResult = producer.send(message);
+            message.setDelayTimeLevel();
+            producer.request()
         } catch (Exception e) {
             System.out.println("e = " + e);
             Thread.sleep(1000);
